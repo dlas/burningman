@@ -1,0 +1,17 @@
+
+ATMEGA328P pin		arduino IO		purpose
+4						ultrasonic send
+5						ultrasonic recieve
+6						file select bit 2
+11						file select but 1
+12						audio board reset
+13						LED port 1 data
+14						LED port 2 data
+15						audio select bit 3
+16						emable audio out
+23						dip switch 1
+24						dip switch 2
+25						dip switch 3
+26						dip switch 4
+27						light sensor
+

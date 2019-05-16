@@ -1,0 +1,15 @@
+
+X6-1	speaker +
+X6-2	speaker -
+
+X7-2	"Blue" power connector pin 2
+X7-1	"Blue" power connector pin 1
+
+X4-1	"silver" LED-strip connector pin 2
+X4-2	"silver" LED-strip connector pin 3
+X4-3	NC
+X4-4	"silver" LED-strip connector pin 1
+
+X5: Wrire as X4
+
+
