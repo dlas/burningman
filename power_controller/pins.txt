@@ -1,0 +1,42 @@
+
+
+pin     arduino         purpose
+90      A7              sense-0
+91      A6              sense-1
+92      A5              sense-2
+93      A4              sense-3
+94      A3              sense-4
+95      A2              sense-5
+96      A1              sense-6
+97      A0              sense-7
+
+26      D13             led
+64      D14             input X2-3
+63      D15             input X2-2
+51      D41             input X2-1
+
+60      D30             switch0 - up
+59      D31             switch0 - down
+77      D23             switch1 - up
+78      D22             switch1 - down
+75      D25             switch2 - up
+76      D24             switch2 - down
+73      D27             switch3 - up
+74      D26             switch3 - down
+71      D29             switch4 - up
+72      D28             switch4 - down
+54      D36             switch5 - up
+53      D37             switch5 - down
+56      D34             switch6 - up
+55      D35             switch6 - down
+58      D32             switch7 - up
+57      D33             switch7 - down
+
+	D19		oled reset input
+
+I2C addresses
+
+PWM controller I2C address	66
+PWM outputs 0-7 correspond to physical outputs 0-7 from  left-to-right.
+ 
+
