@@ -188,7 +188,7 @@ void doleds() {
   static int pround = 0;
   byte intensity=16;
 
-  if (analogRead(4) < 700) {
+  if (analogRead(4) > 700) {
     intensity=4;
   }
   pround++;
