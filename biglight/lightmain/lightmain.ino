@@ -371,7 +371,7 @@ int button_check() {
 byte sel;
 void loop() {
   sel++;
-  delay(25);
+  delay(5);
 //  rainbows(2,0,0);
 //  display.clearDisplay();
 //  display.setCursor(0,0);
@@ -395,9 +395,12 @@ void loop() {
 
   switch (main_mode) {
     case(0):
+       chase();
+       break;
+    case(1):
       rainbows(main_brightness, 0, 0);
       break;
-    case(1):
+    case(2):
        allsolid(main_brightness);
       break;
    
@@ -464,9 +467,174 @@ void rainbows(byte use_brightness, byte scrambles, byte sparkle_brightness) {
   }
 
 
+}
+
+void segment_setpixel(byte seg, short off, uint32_t col) {
+  switch (seg) {
+    case(1):
+      pixels_square.setPixelColor(off, col);
+      break;
+    case(2): 
+      pixels_square.setPixelColor(off+38, col);
+      break;
+    case(3):
+       pixels_square.setPixelColor(off+75, col);
+       break;
+    case(4):
+       pixels_square.setPixelColor(off+113, col);
+       break;
+    case(5):
+      pixels_square.setPixelColor(off+150, col);
+      break;
+      case(6):
+      pixels_square.setPixelColor(off+188, col);
+      break;
+    case(7):
+      pixels_square.setPixelColor(off+225, col);
+      break;
+    case(8):
+       pixels_square.setPixelColor(off+263, col);
+       break;
+    case(9):
+      pixels_circle.setPixelColor(off, col);
+      break;
+    case(10):
+      pixels_circle.setPixelColor(off+57, col);
+      break;
+    case(11): 
+      pixels_circle.setPixelColor(off+115, col);
+      break;
+    case(12):
+      pixels_circle.setPixelColor(off+173, col);
+      break;
+    case(13):
+      pixels_cross1.setPixelColor(off, col);
+      break;
+    case(14):
+      pixels_cross1.setPixelColor(off+75, col);
+      break;
+    case(15):
+      pixels_cross2.setPixelColor(off, col);
+      break;
+    case(16):
+      pixels_cross2.setPixelColor(off+75, col);
+      break;
+  }
+}
+/* 4 [4] 3 [3] 2
+ *[5]         [2]
+ * 5     9     1  
+ *[6]         [1]
+ * 6 [7] 7 [8] 8 
+ * 
+ * 
+ */  
+byte segment_lengths[] = {38,37,38,37,38,37,38,37,57,57,57,57,75,75,75,75};
+int8_t vertex_to_edges[][4] = {
+  {0,0,0,0},
+  {-9, 10, -1, 2},
+  {-2,3,-14,0},
+  {-3,4,-10,11},
+  {-4,5,-16,0},
+  {-5,6,-11,12},
+  {-6,7,13, 0},
+  {-7,8,-12,9},
+  {-8, 1, 15, 0},
+  {-13,14,-15,16} 
+  
+};
+
+byte edges_to_vertex[][2] = {
+  {0,0},
+  {8, 1},
+  {1, 2},
+  {2, 3},
+  {3, 4},
+  {4, 5},
+  {5, 6},
+  {6, 7},
+  {7, 8},
+  {7, 1},
+  {1, 3},
+  {3, 5},
+  {5, 7},
+  {2, 9},
+  {9, 4},
+  {6, 9},
+  {9, 8} 
+  
+};
+
+byte tried[10];
+
+void chase(void ) {
+ static byte dir=1;
+ static byte section = 1;
+ static short off=0;
+ static uint32_t c;
+ static byte r = 0;
+ static byte r2=1;
+ static byte idx;
+
+// r++;
+ idx ++;
+ if (idx >=144) {
+ idx = 0;
+}
+ c= nextrainbow(24, idx, 4);
+ 
+  r2++;
+ if (dir) {
+  off++; 
+ } else {
+  off--;
+ }
+
+ if ( off < 0 || off >= segment_lengths[section]) {
+  byte newv;
+  newv = edges_to_vertex[section][dir];
+  r+=r2+1;
+  short news;
+  news = vertex_to_edges[newv][(tried[section]++)%4];
+  if (news == 0) {
+    news=vertex_to_edges[newv][0];
+  }
+
+  if (news < 0) {
+    dir = 0;
+    section = -news;
+    off = segment_lengths[section];
+  } else {
+    dir = 1;
+    off = 0;
+    section = news;
+  }
+ }
+
+  decimate(pixels_square.getPixels(), NUMPIXELS_SQUARE);
+  decimate(pixels_circle.getPixels(), NUMPIXELS_CIRCLE);
+  decimate(pixels_cross1.getPixels(), NUMPIXELS_CROSS1);
+  decimate(pixels_cross2.getPixels(), NUMPIXELS_CROSS2);
 
 
+  segment_setpixel(section, off, c);
+  
+  pixels_square.show();
+  pixels_circle.show();
+  pixels_cross1.show();
+  pixels_cross2.show();
 
+
+  
+}
+
+void decimate(byte * t, short n) {
+  short rn = n*4;
+  for (short i = 0; i < rn; i++) {
+    if (t[i] > 0) {
+      t[i]--;
+    }
+  }
 }
 
 void allsolid(unsigned int scale) {
