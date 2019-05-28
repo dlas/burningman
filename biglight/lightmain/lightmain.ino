@@ -68,11 +68,16 @@ byte controls[20];
 #define NUMPIXELS_CROSS1 150
 #define NUMPIXELS_CROSS2 150
 
+#define OFFSET_SQUARE 0
+#define OFFSET_CIRCLE 20
+#define OFFSET_CROSS1 0
+#define OFFSET_CROSS2 0
 
-Adafruit_NeoPixel pixels_square = Adafruit_NeoPixel(NUMPIXELS_SQUARE, 8, NEO_GRBW + NEO_KHZ800);
-Adafruit_NeoPixel pixels_circle = Adafruit_NeoPixel(NUMPIXELS_CIRCLE, 10, NEO_GRBW + NEO_KHZ800);
-Adafruit_NeoPixel pixels_cross1 = Adafruit_NeoPixel(NUMPIXELS_CROSS1, 11, NEO_GRBW + NEO_KHZ800);
-Adafruit_NeoPixel pixels_cross2 = Adafruit_NeoPixel(NUMPIXELS_CROSS2, 12, NEO_GRBW + NEO_KHZ800);
+Adafruit_NeoPixel pixels_cross2 = Adafruit_NeoPixel(NUMPIXELS_CROSS2 + OFFSET_CROSS2, 12, NEO_GRBW + NEO_KHZ800);
+
+Adafruit_NeoPixel pixels_square = Adafruit_NeoPixel(NUMPIXELS_SQUARE + OFFSET_SQUARE, 8, NEO_GRBW + NEO_KHZ800);
+Adafruit_NeoPixel pixels_circle = Adafruit_NeoPixel(NUMPIXELS_CIRCLE + OFFSET_CIRCLE, 10, NEO_GRBW + NEO_KHZ800);
+Adafruit_NeoPixel pixels_cross1 = Adafruit_NeoPixel(NUMPIXELS_CROSS1 + OFFSET_CROSS1, 11, NEO_GRBW + NEO_KHZ800);
 
 
 uint32_t Color(byte r, byte g, byte b, byte w) {
@@ -496,16 +501,16 @@ void segment_setpixel(byte seg, short off, uint32_t col) {
        pixels_square.setPixelColor(off+263, col);
        break;
     case(9):
-      pixels_circle.setPixelColor(off, col);
+      pixels_circle.setPixelColor(off + OFFSET_CIRCLE, col);
       break;
     case(10):
-      pixels_circle.setPixelColor(off+57, col);
+      pixels_circle.setPixelColor(off+57 + OFFSET_CIRCLE, col);
       break;
     case(11): 
-      pixels_circle.setPixelColor(off+115, col);
+      pixels_circle.setPixelColor(off+115 + OFFSET_CIRCLE, col);
       break;
     case(12):
-      pixels_circle.setPixelColor(off+173, col);
+      pixels_circle.setPixelColor(off+173 + OFFSET_CIRCLE, col);
       break;
     case(13):
       pixels_cross1.setPixelColor(off, col);
@@ -529,7 +534,7 @@ void segment_setpixel(byte seg, short off, uint32_t col) {
  * 
  * 
  */  
-byte segment_lengths[] = {38,37,38,37,38,37,38,37,57,57,57,57,75,75,75,75};
+byte segment_lengths[] = {0, 38,37,38,37,38,37,38,37,57,57,57,57,74,74,74,74};
 int8_t vertex_to_edges[][4] = {
   {0,0,0,0},
   {-9, 10, -1, 2},
@@ -540,9 +545,10 @@ int8_t vertex_to_edges[][4] = {
   {-6,7,13, 0},
   {-7,8,-12,9},
   {-8, 1, 15, 0},
-  {-13,14,-15,16} 
+  {16, -13,14,-15} 
   
 };
+
 
 byte edges_to_vertex[][2] = {
   {0,0},
@@ -558,10 +564,10 @@ byte edges_to_vertex[][2] = {
   {1, 3},
   {3, 5},
   {5, 7},
-  {2, 9},
-  {9, 4},
   {6, 9},
-  {9, 8} 
+  {9, 2},
+  {8, 9},
+  {9, 4} 
   
 };
 
@@ -581,13 +587,13 @@ void chase(void ) {
  if (idx >=144) {
  idx = 0;
 }
- c= nextrainbow(24, idx, 4);
+ c= nextrainbow(24, idx, 15);
  
   r2++;
  if (dir) {
-  off++; 
+  off+=3; 
  } else {
-  off--;
+  off-=3;
  }
 
  if ( off < 0 || off >= segment_lengths[section]) {
@@ -595,11 +601,11 @@ void chase(void ) {
   newv = edges_to_vertex[section][dir];
   r+=r2+1;
   short news;
-  news = vertex_to_edges[newv][(tried[section]++)%4];
+  news = vertex_to_edges[newv][random(4)];
   if (news == 0) {
     news=vertex_to_edges[newv][0];
   }
-
+  
   if (news < 0) {
     dir = 0;
     section = -news;
@@ -632,7 +638,11 @@ void decimate(byte * t, short n) {
   short rn = n*4;
   for (short i = 0; i < rn; i++) {
     if (t[i] > 0) {
-      t[i]--;
+      if (t[i] < 4) {
+        t[i] = 0;
+      } else {
+       t[i]-=4;
+      }
     }
   }
 }

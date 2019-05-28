@@ -186,10 +186,10 @@ void loop() {
 void doleds() {
   int i;
   static int pround = 0;
-  byte intensity=16;
+  byte intensity=10;
 
-  if (analogRead(4) > 700) {
-    intensity=4;
+  if (analogRead(4) > 500) {
+    intensity=3;
   }
   pround++;
 
@@ -265,12 +265,13 @@ uint32_t Color(byte r, byte g, byte b, byte x)
 
 byte measure() {
   int counter = 0;
+  short test = 1;
   digitalWrite(2,1);
   delay(1);
   digitalWrite(2,0);
 
 
-  while (digitalRead(3) == 0);
+  while (digitalRead(3) == 0 && test++);
   while (digitalRead(3) == 1) {
     delay(1);
     //digitalWrite(7, counter&1);
