@@ -405,14 +405,17 @@ void loop() {
     use_mode = main_mode;
    }
   switch (use_mode) {
-    case(1):
+    case(2):
        chase(main_brightness);
        break;
-    case(2):
+    case(3):
       rainbows(main_brightness, 0, 0);
       break;
-    case(3):
+    case(4):
        allsolid(main_brightness);
+      break;
+    case(1):
+      manychase(main_brightness);
       break;
    
   }
@@ -480,6 +483,58 @@ void rainbows(byte use_brightness, byte scrambles, byte sparkle_brightness) {
 
 }
 
+uint32_t segment_getpixel(byte seg, short off) {
+  switch (seg) {
+    case(1):
+      return pixels_square.getPixelColor(off);
+      break;
+    case(2): 
+      return pixels_square.getPixelColor(off+38);
+      break;
+    case(3):
+      return  pixels_square.getPixelColor(off+75);
+       break;
+    case(4):
+      return  pixels_square.getPixelColor(off+113);
+       break;
+    case(5):
+     return  pixels_square.getPixelColor(off+150);
+      break;
+      case(6):
+      return pixels_square.getPixelColor(off+188);
+      break;
+    case(7):
+      return pixels_square.getPixelColor(off+225);
+      break;
+    case(8):
+      return  pixels_square.getPixelColor(off+263);
+       break;
+    case(9):
+     return pixels_circle.getPixelColor(off + OFFSET_CIRCLE);
+      break;
+    case(10):
+      return pixels_circle.getPixelColor(off+57 + OFFSET_CIRCLE);
+      break;
+    case(11): 
+      return pixels_circle.getPixelColor(off+115 + OFFSET_CIRCLE);
+      break;
+    case(12):
+      return pixels_circle.getPixelColor(off+173 + OFFSET_CIRCLE);
+      break;
+    case(13):
+      return pixels_cross1.getPixelColor(off);
+      break;
+    case(14):
+      return pixels_cross1.getPixelColor(off+75);
+      break;
+    case(15):
+      return pixels_cross2.getPixelColor(off);
+      break;
+    case(16):
+      return pixels_cross2.getPixelColor(off+75);
+      break;
+  }
+}
 void segment_setpixel(byte seg, short off, uint32_t col) {
   switch (seg) {
     case(1):
@@ -578,6 +633,119 @@ byte edges_to_vertex[][2] = {
 };
 
 byte tried[10];
+
+typedef struct chase_state {
+  byte dir;
+  byte section;
+  byte off;
+  byte idx;
+  uint32_t fixcolor;
+  
+} chase_state;
+
+chase_state CHASESTATE[5];
+#define N_CHASE 5
+
+void manychase(byte brightness) {
+  byte i;
+
+  byte activecount = 0;
+  for (i = 0; i < N_CHASE; i++) {
+    if (CHASESTATE[i].section) {
+      activecount++;
+    }
+  }
+  for (i = 0; i < N_CHASE; i++) {
+    chase_state * cp = CHASESTATE+i;
+    if(random(1000) == 1 || activecount == 0) {
+        cp->section=(random(12)+1);
+        cp->dir=random(2);
+        cp->idx = random(144);
+        cp->off = 0;
+        if (random(10)==1) {
+          cp->fixcolor = 0;
+        } else {
+          cp->fixcolor=nextrainbow(24,random(144), brightness); 
+          
+        }
+        activecount++;
+
+      
+    } else {
+      chase1(cp);
+
+    }
+
+  }
+  decimate(pixels_square.getPixels(), NUMPIXELS_SQUARE);
+  decimate(pixels_circle.getPixels(), NUMPIXELS_CIRCLE);
+  decimate(pixels_cross1.getPixels(), NUMPIXELS_CROSS1);
+  decimate(pixels_cross2.getPixels(), NUMPIXELS_CROSS2);
+
+
+  
+  pixels_square.show();
+  pixels_circle.show();
+  pixels_cross1.show();
+  pixels_cross2.show();
+  
+};
+
+void dddd(void){}
+
+
+void chase1(struct chase_state  * cp) {
+
+int i;
+  uint32_t c;
+  for (i = 0; i < main_speed; i++) {
+
+// r++;
+ cp->idx ++;
+ if (cp->idx >=144) {
+ cp->idx = 0;
+}
+if (cp->fixcolor ==0 ) {
+ c= nextrainbow(24, cp->idx, main_brightness);
+} else {
+  c = cp->fixcolor;
+}
+ if (cp->dir) {
+  cp->off+=1; 
+ } else {
+  cp->off-=1;
+ }
+
+ if ( cp->off < 0 || cp->off >= segment_lengths[cp->section]) {
+  byte newv;
+  newv = edges_to_vertex[cp->section][cp->dir];
+
+  short news;
+  news = vertex_to_edges[newv][random(4)];
+  if (news == 0) {
+    news=vertex_to_edges[newv][0];
+  }
+  
+  if (news < 0) {
+    cp->dir = 0;
+    cp->section = -news;
+    cp->off = segment_lengths[cp->section];
+  } else {
+    cp->dir = 1;
+    cp->off = 0;
+    cp->section = news;
+  }
+ }
+uint32_t oldpix = segment_getpixel(cp->section, cp->off);
+
+ segment_setpixel(cp->section, cp->off, addcolor(oldpix,c));
+  }
+
+
+
+  
+}
+
 
 void chase(byte brightness ) {
  static byte dir=1;
@@ -743,4 +911,34 @@ uint32_t nextrainbow(int segment, int i, unsigned int scale) {
     default: return Color(0, 0, 0, 10);
   }
 
+}
+
+
+byte satadd(byte a, byte b) {
+  short r = (short)a+(short)b;
+  if ( r > 255) {
+    return 255;
+  } else {
+    return (byte)r;
+  }
+}
+
+
+uint32_t addcolor(uint32_t a, uint32_t b) {
+
+ byte * ap = (byte*)&a;
+ byte * bp = (byte*)&b;
+
+ uint32_t r;
+
+ byte * rp = (byte*)&r;
+
+ byte i;
+
+ for (i = 0; i < 4; i++) {
+  rp[i] = satadd(ap[i], bp[i]);
+ }
+
+ return r;
+  
 }
