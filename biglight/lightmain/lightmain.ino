@@ -397,7 +397,7 @@ void loop() {
     }
   }
 
-
+   main_brightness = (analogRead(0)+15)/64;
   switch (main_mode) {
     case(0):
        chase();
