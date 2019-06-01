@@ -132,7 +132,7 @@ typedef struct  {
 
 const  MenuItem  menu[]  = {
   {
-    2,
+    3,
      "main mode"
   },
   
@@ -376,7 +376,7 @@ int button_check() {
 byte sel;
 void loop() {
   sel++;
-  delay(5);
+  delay(1);
 //  rainbows(2,0,0);
 //  display.clearDisplay();
 //  display.setCursor(0,0);
@@ -396,16 +396,22 @@ void loop() {
       delay(250);
     }
   }
-
-   main_brightness = (analogRead(0)+15)/64;
-  switch (main_mode) {
-    case(0):
-       chase();
-       break;
+   byte use_mode;
+   main_brightness = (analogRead(0)+63)/64;
+   main_speed =(analogRead(2)+63)/64;
+   if (main_mode == 0) {
+    use_mode = 1+(analogRead(1)+127)/128;
+   } else {
+    use_mode = main_mode;
+   }
+  switch (use_mode) {
     case(1):
+       chase(main_brightness);
+       break;
+    case(2):
       rainbows(main_brightness, 0, 0);
       break;
-    case(2):
+    case(3):
        allsolid(main_brightness);
       break;
    
@@ -427,7 +433,7 @@ void rainbows(byte use_brightness, byte scrambles, byte sparkle_brightness) {
     
   }
   pixels_square.show();
-  rainbow_offset+=1;//main_speed;
+  rainbow_offset+=main_speed;
   if (rainbow_offset >= NUMPIXELS_SQUARE) {
     rainbow_offset=0;
   }
@@ -442,7 +448,7 @@ void rainbows(byte use_brightness, byte scrambles, byte sparkle_brightness) {
     
   }
   pixels_circle.show();
-  rainbowcirc_offset+=1;//main_speed;
+  rainbowcirc_offset+=main_speed;
   if (rainbowcirc_offset >= NUMPIXELS_CIRCLE) {
     rainbowcirc_offset=0;
   }
@@ -466,7 +472,7 @@ void rainbows(byte use_brightness, byte scrambles, byte sparkle_brightness) {
   }
   pixels_cross2.show();
   pixels_cross1.show();
-  rainbowcross_offset+=1;//main_speed;
+  rainbowcross_offset+=main_speed;
   if (rainbowcross_offset >= NUMPIXELS_CROSS1) {
     rainbowcross_offset=0;
   }
@@ -573,7 +579,7 @@ byte edges_to_vertex[][2] = {
 
 byte tried[10];
 
-void chase(void ) {
+void chase(byte brightness ) {
  static byte dir=1;
  static byte section = 1;
  static short off=0;
@@ -581,19 +587,22 @@ void chase(void ) {
  static byte r = 0;
  static byte r2=1;
  static byte idx;
+int i;
+  
+  for (i = 0; i < main_speed; i++) {
 
 // r++;
  idx ++;
  if (idx >=144) {
  idx = 0;
 }
- c= nextrainbow(24, idx, 15);
+ c= nextrainbow(24, idx, brightness);
  
   r2++;
  if (dir) {
-  off+=3; 
+  off+=1; 
  } else {
-  off-=3;
+  off-=1;
  }
 
  if ( off < 0 || off >= segment_lengths[section]) {
@@ -617,13 +626,14 @@ void chase(void ) {
   }
  }
 
+ segment_setpixel(section, off, c);
+  }
   decimate(pixels_square.getPixels(), NUMPIXELS_SQUARE);
   decimate(pixels_circle.getPixels(), NUMPIXELS_CIRCLE);
   decimate(pixels_cross1.getPixels(), NUMPIXELS_CROSS1);
   decimate(pixels_cross2.getPixels(), NUMPIXELS_CROSS2);
 
 
-  segment_setpixel(section, off, c);
   
   pixels_square.show();
   pixels_circle.show();
