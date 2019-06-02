@@ -398,7 +398,7 @@ void loop() {
   }
    byte use_mode;
    main_brightness = (analogRead(0)+63)/64;
-   main_speed =(analogRead(2)+63)/64;
+   main_speed =1+(analogRead(2)+63)/64;
    if (main_mode == 0) {
     use_mode = 1+(analogRead(1)+127)/128;
    } else {
@@ -406,7 +406,7 @@ void loop() {
    }
   switch (use_mode) {
     case(2):
-       chase(main_brightness);
+       snow(main_brightness);
        break;
     case(3):
       rainbows(main_brightness, 0, 0);
@@ -416,6 +416,12 @@ void loop() {
       break;
     case(1):
       manychase(main_brightness);
+      break;
+      case(5):
+      chase(main_brightness);
+      break;
+      case(6):
+      splash(main_brightness);
       break;
    
   }
@@ -826,7 +832,8 @@ void decimate(byte * t, short n) {
 }
 
 void allsolid(unsigned int scale) {
-  uint32_t c = solid(0, scale);
+//  uint32_t c = solid(0, scale);
+  uint32_t c = nextrainbow(32, analogRead(2)/4, scale);
   int i;
   for (i = 0; i < NUMPIXELS_SQUARE; i++) {
     pixels_square.setPixelColor(i, c);
@@ -908,7 +915,7 @@ uint32_t nextrainbow(int segment, int i, unsigned int scale) {
     case (3): return Color(0, levelL, big, 0);
     case (4): return Color(levelH, 0, big, 0);
     case (5): return Color(big, 0, levelL, 0);
-    default: return Color(0, 0, 0, 10);
+    default: return Color(0, 0, 0, scale*15);
   }
 
 }
@@ -940,5 +947,157 @@ uint32_t addcolor(uint32_t a, uint32_t b) {
  }
 
  return r;
+  
+}
+
+void snow(byte brightness) {
+  static byte segment;
+  static byte pos=0;
+  static byte limit = 75;
+  static uint32_t color=2330;
+  static uint32_t basecolor;
+
+  byte idx;
+
+  for (idx = 0; idx < main_speed; idx++) {
+  if (segment ==0) segment = 13;
+
+  if (pos < limit) {
+    if (segment == 13 || segment == 15) {
+      segment_setpixel(segment, pos, color);
+      if (pos > 0) {
+        segment_setpixel(segment, pos-1, 0);
+      }
+    } else {
+      segment_setpixel(segment, 75-pos, color);
+      if (pos > 0) {
+        segment_setpixel(segment, 75-pos+1, 0);
+        
+      }
+    }
+    pos+=1;
+  } else {
+    if (limit > 0) {
+      limit --;
+      pos =0;
+    } else {
+      limit =75;
+      pos=0;
+      segment = random(4)+13;
+      color=nextrainbow(24, random(144), brightness);  
+    } 
+      
+  }
+  }
+
+  int i;
+  for (i = 0; i < NUMPIXELS_SQUARE; i++) {
+    pixels_square.setPixelColor(i, color);
+  }
+
+  for (i = 0; i < NUMPIXELS_CIRCLE; i++) {
+    pixels_circle.setPixelColor(i, color);
+  }
+  pixels_square.show();
+  pixels_circle.show();
+  pixels_cross1.show();
+  pixels_cross2.show();  
+}
+
+
+#define MAXRUNS 17
+void splash(int brightness) {
+
+  static uint32_t active_segments=1;
+  static uint32_t dead_segments=0;
+  static short active_positions[MAXRUNS];
+  static byte dir[MAXRUNS]={1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
+  static uint32_t color=2300;
+  static uint32_t color2[MAXRUNS];
+
+  byte active=0;
+  byte i;
+   for (i = 0; i < MAXRUNS; i++) {
+    if (active_segments&(1l<<i) && !(dead_segments&(1l<<i))) {
+      active ++;
+    }
+   }
+
+  dead_segments = 0;
+  
+  if (active > 0) {
+
+    for (i = 0; i < MAXRUNS; i++) {
+      if (active_segments&(1l<<i) && !(dead_segments&(1l<<i))) {
+        if (dir[i]) {
+          active_positions[i]++;
+        } else {
+          active_positions[i]--;
+        }
+        if (active_positions[i] < 0 || active_positions[i] > segment_lengths[i]) {
+          
+          byte v;
+          v = edges_to_vertex[i][dir[i]];
+          byte j;
+          for (j = 0; j < 4; j++) {
+            short newe;
+            short abse;
+            newe = vertex_to_edges[v][j];
+            //newe=j;
+            if (newe == 0) {
+              continue;
+            }
+            abse=abs(newe);
+            
+         //   if ((dead_segments&(1l<<abse)==0) && (active_segments&(1l<<abse)==0)) {
+ //             if (!((dead_segments&(1l<<abse)) || (active_segments&(1<<abse)))) {
+              if(1) {
+              active_segments |=1l<<abse;
+              color2[abse] = nextrainbow(24, random(144), brightness);
+            
+              if (newe >0) {
+               active_positions[abse] = 0;
+               dir[abse]=1;
+              
+             } else {
+                active_positions[abse] = segment_lengths[abse];
+               dir[abse] = 0;
+              }
+            }
+               
+          }
+          dead_segments|=(1l<<i);
+          /*
+           color=nextrainbow(24, random(144), brightness);
+    //dir=random(2);
+          byte a = random(16)+1;
+          dir[a] = 1;
+          active_positions[a] = 0;
+          active_segments= 1<<a;
+          dead_segments = 0;   
+        */
+        } else {
+          segment_setpixel(i, active_positions[i], color2[i]);          
+        }
+      }
+    }
+  } else {
+    color=nextrainbow(24, random(144), brightness);
+              byte a = random(16)+1;
+          dir[a] = 1;
+          active_positions[a] = 0;
+          active_segments= 1<<a;
+          dead_segments = 0;
+  }
+  
+  decimate(pixels_square.getPixels(), NUMPIXELS_SQUARE);
+  decimate(pixels_circle.getPixels(), NUMPIXELS_CIRCLE);
+  decimate(pixels_cross1.getPixels(), NUMPIXELS_CROSS1);
+  decimate(pixels_cross2.getPixels(), NUMPIXELS_CROSS2);
+  pixels_square.show();
+  pixels_circle.show();
+  pixels_cross1.show();
+  pixels_cross2.show();  
+
   
 }
