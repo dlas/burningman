@@ -12,16 +12,95 @@ byte current_sense_mapping[]={7,6,5,4,3,2,1,0};
 byte switch_down_mapping[]={30, 23,25, 27, 29, 36, 34, 32};
 byte switch_up_mapping[]={31, 22, 24, 26, 28, 37, 35, 33};
 byte enable_pwm = 1;
+volatile byte tod_second;
+volatile byte tod_minute;
+volatile byte tod_hour;
+volatile short tod_ms;
+volatile byte tod_overflow;
+volatile byte need_update;
 
+typedef struct  {
+  byte ons;
+  byte offs;
+} offon;
 
-#define MODE_SWITCH_BUTTON 20
+ offon tod_off_on_mappings[4];
+
+#define MODE_SWITCH_BUTTON 42
 #define PWM_CONTROLLER_ADDRESS 66
 
 
 
+void tod_inc() {
+  tod_second++;
+  if (tod_second >=60) {
+    tod_second = 0;
+    tod_minute++;
+  }
+ tod_minute++;
+  if (tod_minute>=60) {
+    tod_minute = 0;
+    tod_hour ++;
+
+    if ((tod_hour+2)%6 == 0) {
+      update_universe();
+    }
+  }
+
+  if (tod_hour >=24) {
+    tod_hour = 0;
+  }
+  
+}
+
+void update_universe() {
+  need_update = 1;
+  
+}
+
+ISR(TIMER1_COMPA_vect) {
+ // tod_inc();
+  tod_ms+=500;
+  if (tod_ms >=1000) {
+    tod_inc();
+    tod_ms=0;
+  }
+
+/*
+  tod_overflow+=3;
+  if (tod_overflow > 125) {
+    tod_overflow-=125;
+    tod_ms++;
+    if (tod_ms >= 1000) {
+      tod_inc();
+      tod_ms = 0;
+    }
+  }
+  
+  */
+}
+
+void setup()   {   
 
 
-void setup()   {                
+               
+  TCCR1A = 0;
+
+  TCCR1B = 0;
+
+  TCNT1  = 0;
+
+
+  OCR1A = 31250;            // compare match register 16MHz/256/2Hz
+
+  TCCR1B |= (1 << WGM12);   // CTC mode
+
+  TCCR1B |= (1 << CS12);    // 256 prescaler 
+
+  TIMSK1 |= (1 << OCIE1A);  // enable timer compare interrupt
+  
+  //OCR0A = 0xAF;
+  //TIMSK0 |= _BV(OCIE0A);
   Serial.begin(9600);
 
   // by default, we'll generate the high voltage from the 3.3v line internally! (neat!)
@@ -40,6 +119,7 @@ void setup()   {
   }
 
   pinMode(15, INPUT_PULLUP);
+  pinMode(42, INPUT_PULLUP);
   pinMode(14, OUTPUT);
   digitalWrite(14,0);
   delay(1);
@@ -136,14 +216,134 @@ void do_display() {
   display.display();
 }
 
+void switches_update_tod() {
+  if (!digitalRead(switch_up_mapping[0])) {
+    tod_hour++;
+  }
+
+  if (!digitalRead(switch_down_mapping[0])) {
+    tod_hour--;
+  }
+
+  if (!digitalRead(switch_up_mapping[1])) {
+    tod_minute++;
+  }
+
+  if (!digitalRead(switch_down_mapping[1])) {
+    tod_minute--;
+  }
+
+  //tod_second = 0;
+  //tod_inc();
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setTextColor(WHITE);
+  display.setCursor(24, 4);
+  display.print(tod_hour);
+  display.print(":");
+  display.print(tod_minute);
+  display.print(":");
+  display.print(tod_second);
+  display.setTextSize(1);
+  display.setCursor(0,24);
+  display.print(tod_ms);
+  display.display();  
+}
+
+void do_config(void) {
+  static byte config_row;
+   byte i;
+   
+  if(!digitalRead(switch_down_mapping[0])) config_row--;
+  if(!digitalRead(switch_up_mapping[0])) config_row++;
+
+  if (config_row >7) {
+    config_row = 0;
+  }
+
+  for (i = 0; i < 4; i++) {
+    if (!digitalRead(switch_down_mapping[i+1])) {
+      tod_off_on_mappings[i].ons &=~(1u<<config_row);
+      tod_off_on_mappings[i].offs |=(1u<<config_row);
+    }
+    if (!digitalRead(switch_up_mapping[i+1])) {
+      tod_off_on_mappings[i].ons |= (1u<<config_row);
+      tod_off_on_mappings[i].offs &=~(1u<<config_row);
+    }
+  }
+
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.print("output: ");
+  display.print(config_row);
+  display.setCursor(0, 12);
+  for (i = 0; i < 4; i++) {
+    display.setCursor(i*32, 12);
+    if (tod_off_on_mappings[i].ons& (1u<<config_row)) {
+      display.print("on");
+    } else if (tod_off_on_mappings[i].offs & (1u<<config_row)) {
+      display.print("off");
+    } else {
+      display.print("???");
+    }
+
+  }
+  
+  display.display();
+ 
+}
+byte display_mode = 0;
+
+#define DM_NORMAL 0
+#define DM_TOD 1
+#define DM_CONFIG 2
+
+void really_update_universe() {
+  // Stops at 2:00PM; 8:00PM; 2:00AM; 8:00AM;
+  byte t = (tod_hour+2)/6;
+  byte i;
+   offon * tmap = tod_off_on_mappings+t;
+
+  for (i = 0; i < 8; i++) {
+    if (tmap->ons&(1u<<i)) {
+      outputs[i]=16;
+    }
+    if (tmap->offs&(1u<<i)) {
+      outputs[i] = 0;
+    }
+  }
+  
+}
 void loop() {
   int i;
+
+  if (!digitalRead(MODE_SWITCH_BUTTON)) {
+    display_mode ++;
+    if (display_mode >2) {
+      display_mode = 0;
+    }
+  }
+
+  switch (display_mode){
+    case(DM_NORMAL):
+      read_switches();
+      do_display();
+      break;
+    case(DM_TOD):
+       switches_update_tod();
+     break;
+    case(DM_CONFIG):
+       do_config();
+     break;
+  }
   read_currents();
-  read_switches();
-  do_display();
   update_pca();
   for (i = 0; i < 8; i++) {
     last_outputs[i] = outputs[i];
+  }
+  if (need_update) {
+    need_update = 0;
+    really_update_universe();
   }
   delay(100);
 
