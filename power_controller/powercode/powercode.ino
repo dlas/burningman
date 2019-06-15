@@ -4,6 +4,7 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <EEPROM.h>
 
 #define OLED_RESET 19
 Adafruit_SSD1306 display(OLED_RESET);
@@ -20,8 +21,8 @@ volatile byte tod_overflow;
 volatile byte need_update;
 
 typedef struct  {
-  byte ons;
-  byte offs;
+
+  byte values[8];
 } offon;
 
  offon tod_off_on_mappings[4];
@@ -30,19 +31,39 @@ typedef struct  {
 #define PWM_CONTROLLER_ADDRESS 66
 
 
+void save_data_to_eeprom() {
+  byte * bp = (byte*)tod_off_on_mappings;
+  short l = sizeof(tod_off_on_mappings);
+  short i;
 
+  for (i = 0; i < l; i++) {
+    EEPROM.write(i, bp[i]); 
+  }
+
+}
+
+void restore_data_from_eeprom() {
+  byte * bp = (byte*)tod_off_on_mappings;
+  short l = sizeof(tod_off_on_mappings);
+  short i;
+
+  for (i = 0; i < l; i++) {
+    bp[i] = EEPROM.read(i);
+    
+  }
+}
 void tod_inc() {
   tod_second++;
   if (tod_second >=60) {
     tod_second = 0;
     tod_minute++;
   }
- tod_minute++;
+ //tod_minute++;
   if (tod_minute>=60) {
     tod_minute = 0;
     tod_hour ++;
 
-    if ((tod_hour+2)%6 == 0) {
+    if ((tod_hour+4)%6 == 0) {
       update_universe();
     }
   }
@@ -124,6 +145,7 @@ void setup()   {
   digitalWrite(14,0);
   delay(1);
   enable_pwm = digitalRead(15);
+  restore_data_from_eeprom();
 
 }
 
@@ -250,6 +272,8 @@ void switches_update_tod() {
   display.display();  
 }
 
+char * times[] = {"2", "8", "14", "20"};
+ 
 void do_config(void) {
   static byte config_row;
    byte i;
@@ -263,12 +287,10 @@ void do_config(void) {
 
   for (i = 0; i < 4; i++) {
     if (!digitalRead(switch_down_mapping[i+1])) {
-      tod_off_on_mappings[i].ons &=~(1u<<config_row);
-      tod_off_on_mappings[i].offs |=(1u<<config_row);
+      tod_off_on_mappings[i].values[config_row]++;
     }
     if (!digitalRead(switch_up_mapping[i+1])) {
-      tod_off_on_mappings[i].ons |= (1u<<config_row);
-      tod_off_on_mappings[i].offs &=~(1u<<config_row);
+      tod_off_on_mappings[i].values[config_row]--;
     }
   }
 
@@ -279,17 +301,26 @@ void do_config(void) {
   display.setCursor(0, 12);
   for (i = 0; i < 4; i++) {
     display.setCursor(i*32, 12);
-    if (tod_off_on_mappings[i].ons& (1u<<config_row)) {
-      display.print("on");
-    } else if (tod_off_on_mappings[i].offs & (1u<<config_row)) {
-      display.print("off");
+    if (tod_off_on_mappings[i].values[config_row] > 18) {
+      display.print("keep");
     } else {
-      display.print("???");
+      display.print(tod_off_on_mappings[i].values[config_row]);
     }
-
+    
+    display.setCursor(i*32, 20);
+    display.print(times[i]);
   }
   
   display.display();
+
+  if (!digitalRead(switch_down_mapping[5]) || ! digitalRead(switch_up_mapping[5])) {
+    save_data_to_eeprom();
+    display.clearDisplay();
+    display.setCursor(0,0);
+    display.print("save!");
+    display.display();
+    delay(100);
+  }
  
 }
 byte display_mode = 0;
@@ -305,11 +336,10 @@ void really_update_universe() {
    offon * tmap = tod_off_on_mappings+t;
 
   for (i = 0; i < 8; i++) {
-    if (tmap->ons&(1u<<i)) {
-      outputs[i]=16;
-    }
-    if (tmap->offs&(1u<<i)) {
-      outputs[i] = 0;
+    byte v;
+    v = tmap->values[i];
+    if (v<18) {
+      outputs[i] = v;
     }
   }
   

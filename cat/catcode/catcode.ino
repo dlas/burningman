@@ -128,6 +128,8 @@ byte lastmeasure;
 byte lastlastmeasure;
 byte measure_stable_count;
 byte last_s;
+
+
 void loop() {
 
   doleds();
@@ -136,13 +138,16 @@ void loop() {
 
   byte m = measure();
   if(m) {
-    start_sndeffect(EFFECT_MEOW);
+    digitalWrite(5,1);
+    delay(100);
+    digitalWrite(5,0);
+    //start_sndeffect(EFFECT_MEOW);
   digitalWrite(13, 1);
   } else {
     digitalWrite(13, 0);
   }
 
-  check_sndeffect();
+  //check_sndeffect();
   /*
   if (m== lastmeasure) {
     measure_stable_count ++;
@@ -186,9 +191,9 @@ void loop() {
 void doleds() {
   int i;
   static int pround = 0;
-  byte intensity=10;
+  byte intensity=16;
 
-  if (analogRead(4) > 500) {
+  if (analogRead(4) > 800) {
     intensity=3;
   }
   pround++;
