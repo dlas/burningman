@@ -132,22 +132,23 @@ byte last_s;
 
 void loop() {
 
-  doleds();
+  byte mode = readdip();
+  doleds(mode);
  // delay(10);
  
 
   byte m = measure();
   if(m) {
-    digitalWrite(5,1);
-    delay(100);
-    digitalWrite(5,0);
-    //start_sndeffect(EFFECT_MEOW);
+  //  digitalWrite(5,1);
+  //  delay(100);
+   // digitalWrite(5,0);
+    start_sndeffect(EFFECT_MEOW);
   digitalWrite(13, 1);
   } else {
     digitalWrite(13, 0);
   }
-
-  //check_sndeffect();
+  delay(2);
+  check_sndeffect();
   /*
   if (m== lastmeasure) {
     measure_stable_count ++;
@@ -185,17 +186,63 @@ void loop() {
   */
 }
 
+byte readdip(void) {
+  byte x = 0;
+  if (analogRead(0) > 500) {
+    x|=1;
+  }
+
+  if(analogRead(1) > 500) {
+    x|=2;
+  }
+
+  if (analogRead(2) > 500) {
+    x|=4;
+  }
+
+  if (analogRead(3) > 500) {
+    x|=8;
+  }
+
+  return x;
+  
+}
 
 
 
-void doleds() {
+void doleds(byte mode) {
   int i;
   static int pround = 0;
   byte intensity=16;
 
-  if (analogRead(4) > 800) {
+  if (analogRead(4) > 600) {
     intensity=3;
   }
+  // intensity=4;
+  switch (mode &3) {
+    case(0):
+    effect_rainbow(intensity);
+    break;
+    
+    case(1):
+    effect_wipe2(intensity);
+    break;
+    
+    case(2):
+    effect_split(intensity);
+    break;
+    
+    case(3):
+    effect_chase(intensity);
+    break;
+  }
+  //effect_split(intensity);
+  //effect_chase(intensity);
+}
+
+void effect_rainbow(byte intensity) {
+  static byte pround;
+   byte i;
   pround++;
 
   if (pround > 144) {
@@ -210,6 +257,165 @@ void doleds() {
   }
    pixels.show();
   
+}
+
+
+void effect_sparkle(byte intensity) {
+  static short rc;
+
+
+  pixels.clear();
+  rc+=random(3)-1;
+  if (rc < 0) {
+    rc+=144;
+  }
+  if (rc >= 144) {
+    rc-=144;
+  }
+  byte i;
+  byte pos;
+  uint32_t bgc = nextrainbow(rc, intensity/4 + 1);
+
+  for (i = 0; i < 144; i++) {
+    pixels.setPixelColor(i, bgc);
+  }
+
+  for (i = 0; i < 2; i++) {
+    pos = random(144);
+    pixels.setPixelColor(pos, Color(i2color(intensity),i2color(intensity),i2color(intensity),i2color(intensity)));
+  }
+
+  pixels.show();
+}
+
+
+void effect_wipe2(byte intensity) {
+  static uint32_t c;
+  static byte s1=0, s2=0;
+  static byte steps = 0;
+
+  if (steps > 72) {
+    s1 = s2 = random(143);
+    s1++;
+    //c = nextrainbow(random(144), intensity);
+    c=Color(i2color(intensity),i2color(intensity),i2color(intensity),i2color(intensity));
+    steps=0;
+  }
+  steps++;
+  dim(intensity);
+  pixels.setPixelColor(s1, c);
+  pixels.setPixelColor(s2, c);
+  
+
+  s1++;
+  if (s1 > 143) s1 = 0;
+  if (s2 == 0) {
+    s2 = 143;
+  } else {
+    s2--;
+  }
+
+  pixels.show();
+  
+}
+
+byte i2color(byte i) {
+  if (i<16) {
+    return i*i;
+  } else {
+    return 255;
+  }
+}
+// 18; 65; 48
+void effect_split(byte intensity) {
+
+  byte i;
+  for (i =144-58; i <144; i++) {
+    uint32_t c;
+    c = pixels.getPixelColor(i);
+    pixels.setPixelColor(i-1, c);
+  }
+
+  for (i = 60; i > 17; i--) {
+    uint32_t c;
+    c = pixels.getPixelColor(i);
+    pixels.setPixelColor(i+1, c);
+  }
+  pixels.setPixelColor(18, 0);
+
+  for (i = 0; i < 18; i++) {
+    pixels.setPixelColor(i, Color(i2color(intensity),i2color(intensity),i2color(intensity),i2color(intensity)));
+    
+  }
+
+  dim(intensity);
+  
+
+  uint32_t c;
+  c = Color(intensity*8+random(intensity*7), 0, intensity*8+random(intensity*7), 0);
+
+   pixels.setPixelColor(random(144), c);
+   pixels.show();
+  
+}
+
+void effect_chase(byte intensity) {
+  //byte c = random(144);
+  static byte c;
+  c++;
+  if (c > 144) c = 0;
+  static byte l[2]={0,80};
+
+  byte i;
+dim(intensity);
+  for (i = 0; i < 2; i++) {
+    byte pos = l[i];
+    
+   pos+=1;//random(10);
+   if (pos > 144) {
+     pos=0;
+   }
+   l[i] = pos;
+   //byte l = random(144);
+   uint32_t col;
+
+    col = nextrainbow(c, intensity);
+
+  // pixels.clear();
+   pixels.setPixelColor(pos, col);
+  }
+  
+  pixels.show();
+}
+
+void dim(byte intensity) {
+  byte i;
+
+  byte cols[4];
+  byte cutby = intensity/4 + 1;
+  uint32_t * cp = (uint32_t*)(cols);
+
+  for (i = 0; i < 144; i++) {
+    *cp = pixels.getPixelColor(i);
+
+    byte j;
+    for (j = 0; j < 4; j++) {
+      cols[j] = dec1(cols[j], cutby);
+    }
+
+    pixels.setPixelColor(i,*cp);
+    
+  }
+}
+
+byte dec1 (byte d, byte cutby) {
+  if (d > cutby) {
+    d-=cutby;
+  } else {
+    d = 0;
+    
+  }
+  return d;
 }
 
 #define COLOR_SECTORS_DIV 24
@@ -282,10 +488,10 @@ byte measure() {
     //digitalWrite(7, counter&1);
     counter++;
     if (counter > 5) {
-      delay(8-counter);
+      delay(3);
       return 0;
     }
   }
-  delay(3);
+  delay(8-counter);
   return 1;
 }
