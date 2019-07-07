@@ -49,7 +49,7 @@ byte controls[20];
 #define NUMPIXELS_CROSS2 150
 
 #define OFFSET_SQUARE 0
-#define OFFSET_CIRCLE 20
+#define OFFSET_CIRCLE 0
 #define OFFSET_CROSS1 0
 #define OFFSET_CROSS2 0
 
@@ -353,7 +353,7 @@ void loop() {
   //  display.println(sel);
   //  display.display();
 
-  if ( button_check() || sel > 10) {
+  if ( button_check()) {
     menu_render(display_selected);
     sel = 0;
     if (main_save == 1) {
@@ -393,6 +393,8 @@ void loop() {
     case (6):
       splash(main_brightness);
       break;
+    case(7):
+      snow2(main_brightness);
 
   }
 
@@ -975,6 +977,81 @@ void snow(byte brightness) {
 }
 
 
+#define HW (short)36
+void snow2(int brightness) {
+  static short rc[4] = {0, 40, 80, 120};
+  short i;
+  long c;
+
+
+  
+  for (i = 1; i < 74; i++) {
+    c = pixels_cross1.getPixelColor(i);
+    pixels_cross1.setPixelColor(i-1, c);
+    c = pixels_cross1.getPixelColor(150-i);
+    pixels_cross1.setPixelColor(150-i+1,c);
+
+    c = pixels_cross2.getPixelColor(i);
+    pixels_cross2.setPixelColor(i-1, c);
+    c = pixels_cross2.getPixelColor(150-i);
+    pixels_cross2.setPixelColor(150-i+1,c);
+
+    
+  }
+
+  pixels_square.setPixelColor(1, pixels_cross2.getPixelColor(0));
+  pixels_square.setPixelColor(2*HW, pixels_cross1.getPixelColor(148));
+  pixels_square.setPixelColor(4*HW, pixels_cross2.getPixelColor(148));
+  pixels_square.setPixelColor(6*HW, pixels_cross1.getPixelColor(0));
+
+  pixels_square.setPixelColor(8*HW-1, pixels_cross2.getPixelColor(0));
+  pixels_square.setPixelColor(2*HW-1, pixels_cross1.getPixelColor(148));
+  pixels_square.setPixelColor(4*HW-1, pixels_cross2.getPixelColor(148));
+  pixels_square.setPixelColor(6*HW-1, pixels_cross1.getPixelColor(0));
+ // pixels_square.setPixelColor(
+  for (i = 1; i < 37; i++) {
+    c = pixels_square.getPixelColor(HW-i);
+    pixels_square.setPixelColor(HW-i+1, c);
+    pixels_square.setPixelColor(3*HW-i+1, pixels_square.getPixelColor(3*HW-i));
+    pixels_square.setPixelColor(5*HW-i+1, pixels_square.getPixelColor(5*HW-i));
+    pixels_square.setPixelColor(7*HW-i+1, pixels_square.getPixelColor(7*HW-i));
+
+    pixels_square.setPixelColor(7*HW+i, pixels_square.getPixelColor(7*HW+i+1));
+        pixels_square.setPixelColor(5*HW+i, pixels_square.getPixelColor(5*HW+i+1));
+    pixels_square.setPixelColor(3*HW+i, pixels_square.getPixelColor(3*HW+i+1));
+    pixels_square.setPixelColor(1*HW+i, pixels_square.getPixelColor(1*HW+i+1));
+
+    
+  }
+
+  byte p;
+  //byte p = 1+random(73);
+  byte s = random(4); //+ 13;
+
+  rc[s]+=random(4)-1;
+  if (rc[s] <0) {
+    rc[s]+=144;
+  } else if (rc[s] > 143) {
+    rc[s]-=144;
+  }
+  if (s == 1|| s == 3) {
+    p = 3;
+  } else{
+    p=72;
+  }
+  segment_setpixel(s+13, p, nextrainbow(24, rc[s], brightness));
+  
+ // decimate(pixels_square.getPixels(), NUMPIXELS_SQUARE);
+ // decimate(pixels_circle.getPixels(), NUMPIXELS_CIRCLE);
+ // decimate(pixels_cross1.getPixels(), NUMPIXELS_CROSS1);
+ // decimate(pixels_cross2.getPixels(), NUMPIXELS_CROSS2);
+
+  pixels_square.show();
+  pixels_circle.show();
+  pixels_cross1.show();
+  pixels_cross2.show();
+}
+
 #define MAXRUNS 17
 void splash(int brightness) {
 
@@ -983,7 +1060,7 @@ void splash(int brightness) {
   static short active_positions[MAXRUNS];
   static byte dir[MAXRUNS] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
   static uint32_t color = 2300;
-  static uint32_t color2[MAXRUNS];
+  static uint32_t color2[MAXRUNS];// {2300,2300};
 
   byte active = 0;
   byte i;
@@ -1021,10 +1098,15 @@ void splash(int brightness) {
 
             //   if ((dead_segments&(1l<<abse)==0) && (active_segments&(1l<<abse)==0)) {
             //             if (!((dead_segments&(1l<<abse)) || (active_segments&(1<<abse)))) {
-            if (1) {
+          //  if (!(active_segments&(1l<<abse))) {
+            if(1) {
               active_segments |= 1l << abse;
-              color2[abse] = nextrainbow(24, random(144), brightness);
 
+              if (random(100) == 0) {
+                color2[abse] = nextrainbow(24, random(144), brightness);
+              } else {
+               color2[abse] = color2[i]; //nextrainbow(24, random(144), brightness);
+              }
               if (newe > 0) {
                 active_positions[abse] = 0;
                 dir[abse] = 1;
@@ -1054,6 +1136,7 @@ void splash(int brightness) {
   } else {
     color = nextrainbow(24, random(144), brightness);
     byte a = random(16) + 1;
+    color2[a] = color;
     dir[a] = 1;
     active_positions[a] = 0;
     active_segments = 1 << a;
