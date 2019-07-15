@@ -207,16 +207,30 @@ void do_switch(byte sw, byte up, byte down) {
   
 }
 
-#define CURRENT_FACTOR_SN1 0.012
+#define CURRENT_FACTOR_SN1 0.013
 #define CURRENT_FACTOR_SN2 0.0093
 void read_currents() {
   int i;
   for (i = 0; i < 8; i++) {
     int t = analogRead(current_sense_mapping[i]);
-    currents[i] = ((float)(t))*(CURRENT_FACTOR_SN2);
+    currents[i] = ((float)(t))*(CURRENT_FACTOR_SN1);
   }
 
 }
+
+
+void printcurrent(float c, byte op) {
+  if (c > 0) {
+    display.print(c);
+  } else {
+    if (op) {
+      display.print("ERR");
+    } else {
+      display.print(c);
+    }
+  }
+}
+
 
 void do_display() {
   display.clearDisplay();
@@ -227,9 +241,11 @@ void do_display() {
 
   for (i = 0; i < 4; i++) {
     display.setCursor(i*32, 0);
-    display.print(currents[i]);
+    printcurrent(currents[i], outputs[i]);
+    //display.print(currents[i]);
     display.setCursor(i*32, 24);
-    display.print(currents[i+4]);
+    //display.print(currents[i+4]);
+    printcurrent(currents[i+4], outputs[i+4]);
     display.setCursor(i*32, 8);
     display.print(outputs[i]);
     display.setCursor(i*32, 16);
@@ -287,10 +303,35 @@ void do_config(void) {
 
   for (i = 0; i < 4; i++) {
     if (!digitalRead(switch_down_mapping[i+1])) {
-      tod_off_on_mappings[i].values[config_row]++;
+      if (enable_pwm) {
+        tod_off_on_mappings[i].values[config_row]--;
+      } else {
+        byte t = tod_off_on_mappings[i].values[config_row];
+        if (t == 0) {
+          t = 18;
+        } else if (t == 17) {
+          t = 0;
+        } else if (t >= 18) {
+          t = 17;
+        }
+        tod_off_on_mappings[i].values[config_row] = t;
+      }
     }
     if (!digitalRead(switch_up_mapping[i+1])) {
-      tod_off_on_mappings[i].values[config_row]--;
+      if (enable_pwm) {
+        tod_off_on_mappings[i].values[config_row]++;
+      } else {
+        byte t = tod_off_on_mappings[i].values[config_row];
+        if (t == 0) {
+          t = 17;
+        } else if (t == 17) {
+          t = 18;
+        } else if (t >= 18) {
+          t = 0;
+        }
+        tod_off_on_mappings[i].values[config_row] = t;
+        
+      }
     }
   }
 
@@ -301,8 +342,9 @@ void do_config(void) {
   display.setCursor(0, 12);
   for (i = 0; i < 4; i++) {
     display.setCursor(i*32, 12);
-    if (tod_off_on_mappings[i].values[config_row] > 18) {
+    if (tod_off_on_mappings[i].values[config_row] >= 18) {
       display.print("keep");
+      tod_off_on_mappings[i].values[config_row] = 18;
     } else {
       display.print(tod_off_on_mappings[i].values[config_row]);
     }
