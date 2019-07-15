@@ -131,20 +131,26 @@ byte last_s;
 
 
 void loop() {
-
+  static byte countdown = 5;
+  
   byte mode = readdip();
   doleds(mode);
  // delay(10);
  
-
+ 
   byte m = measure();
   if(m) {
   //  digitalWrite(5,1);
   //  delay(100);
    // digitalWrite(5,0);
-    start_sndeffect(EFFECT_MEOW);
+    countdown--;
+    if (countdown == 0) {
+      start_sndeffect(EFFECT_MEOW);
+      countdown = 5;
+    }
   digitalWrite(13, 1);
   } else {
+    countdown = 5;
     digitalWrite(13, 0);
   }
   delay(2);
