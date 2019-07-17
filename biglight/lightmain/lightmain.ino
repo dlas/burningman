@@ -376,7 +376,7 @@ void loop() {
   }
   switch (use_mode) {
     case (2):
-      snow(main_brightness);
+      wbow(main_brightness);
       break;
     case (3):
       rainbows(main_brightness, 0, 0);
@@ -395,6 +395,8 @@ void loop() {
       break;
     case(7):
       snow2(main_brightness);
+      break;
+      case(8): chase(main_brightness);
 
   }
 
@@ -487,17 +489,17 @@ uint32_t segment_getpixel(byte seg, short off) {
     case (8):
       return  pixels_square.getPixelColor(off + 263);
       break;
-    case (9):
-      return pixels_circle.getPixelColor(off + OFFSET_CIRCLE);
-      break;
     case (10):
-      return pixels_circle.getPixelColor(off + 57 + OFFSET_CIRCLE);
+      return pixels_circle.getPixelColor( (off + OFFSET_CIRCLE));
       break;
     case (11):
-      return pixels_circle.getPixelColor(off + 115 + OFFSET_CIRCLE);
+      return pixels_circle.getPixelColor( (off + 57 + OFFSET_CIRCLE));
       break;
     case (12):
-      return pixels_circle.getPixelColor(off + 173 + OFFSET_CIRCLE);
+      return pixels_circle.getPixelColor( (off + 115 + OFFSET_CIRCLE));
+      break;
+    case (9):
+      return pixels_circle.getPixelColor( (off + 173 + OFFSET_CIRCLE));
       break;
     case (13):
       return pixels_cross1.getPixelColor(off);
@@ -539,17 +541,17 @@ void segment_setpixel(byte seg, short off, uint32_t col) {
     case (8):
       pixels_square.setPixelColor(off + 263, col);
       break;
-    case (9):
-      pixels_circle.setPixelColor(off + OFFSET_CIRCLE, col);
-      break;
     case (10):
-      pixels_circle.setPixelColor(off + 57 + OFFSET_CIRCLE, col);
+      pixels_circle.setPixelColor( ( off + OFFSET_CIRCLE), col);
       break;
     case (11):
-      pixels_circle.setPixelColor(off + 115 + OFFSET_CIRCLE, col);
+      pixels_circle.setPixelColor( ( off + 57 + OFFSET_CIRCLE), col);
       break;
     case (12):
-      pixels_circle.setPixelColor(off + 173 + OFFSET_CIRCLE, col);
+      pixels_circle.setPixelColor( ( off + 115 + OFFSET_CIRCLE), col);
+      break;
+    case (9):
+      pixels_circle.setPixelColor( ( off + 173 + OFFSET_CIRCLE), col);
       break;
     case (13):
       pixels_cross1.setPixelColor(off, col);
@@ -887,7 +889,7 @@ uint32_t nextrainbow(int segment, int i, unsigned int scale) {
     case (3): return Color(0, levelL, big, 0);
     case (4): return Color(levelH, 0, big, 0);
     case (5): return Color(big, 0, levelL, 0);
-    default: return Color(0, 0, 0, scale * 15);
+    default: return Color(big, levelH,0,0);
   }
 
 }
@@ -982,8 +984,20 @@ void snow2(int brightness) {
   static short rc[4] = {0, 40, 80, 120};
   short i;
   long c;
-
-
+  static byte r;
+  static byte q;
+  q++;
+  if (q > 5) {
+    q = 0;
+  
+    r++;
+    if (r > 144) r = 0;
+  }
+  
+  pixels_cross1.setPixelColor(73, nextrainbow(24, rc[0], 2));
+  pixels_cross1.setPixelColor(77, nextrainbow(24, rc[1], 2));
+  pixels_cross2.setPixelColor(73, nextrainbow(24, rc[2], 2));
+  pixels_cross2.setPixelColor(77, nextrainbow(24, rc[3], 2));
   
   for (i = 1; i < 74; i++) {
     c = pixels_cross1.getPixelColor(i);
@@ -1026,9 +1040,11 @@ void snow2(int brightness) {
 
   byte p;
   //byte p = 1+random(73);
-  byte s = random(4); //+ 13;
+  byte s = random(50); //+ 13;
 
-  rc[s]+=random(4)-1;
+  if ( s < 4) {
+  byte ot;
+  rc[s]+=random(main_speed*4)-(main_speed*2);
   if (rc[s] <0) {
     rc[s]+=144;
   } else if (rc[s] > 143) {
@@ -1036,11 +1052,25 @@ void snow2(int brightness) {
   }
   if (s == 1|| s == 3) {
     p = 3;
+    ot=+1;
   } else{
     p=72;
+    ot=-1;
   }
-  segment_setpixel(s+13, p, nextrainbow(24, rc[s], brightness));
   
+  segment_setpixel(s+13, p, nextrainbow(24, rc[s], 4)); p+=ot;
+    segment_setpixel(s+13, p, nextrainbow(24, rc[s], 6)); p+=ot;
+  segment_setpixel(s+13, p, nextrainbow(24, rc[s], 8)); p+=ot;
+  segment_setpixel(s+13, p, nextrainbow(24, rc[s], 12)); p+=ot;
+  segment_setpixel(s+13, p, nextrainbow(24, rc[s], 14)); p+=ot;
+  segment_setpixel(s+13, p, nextrainbow(24, rc[s], 16)); p+=ot;
+  segment_setpixel(s+13, p, nextrainbow(24, rc[s], 14)); p+=ot;
+  segment_setpixel(s+13, p, nextrainbow(24, rc[s], 12)); p+=ot;
+  segment_setpixel(s+13, p, nextrainbow(24, rc[s], 10)); p+=ot;
+  segment_setpixel(s+13, p, nextrainbow(24, rc[s], 8)); p=ot;
+    segment_setpixel(s+13, p, nextrainbow(24, rc[s], 6));
+
+  }
  // decimate(pixels_square.getPixels(), NUMPIXELS_SQUARE);
  // decimate(pixels_circle.getPixels(), NUMPIXELS_CIRCLE);
  // decimate(pixels_cross1.getPixels(), NUMPIXELS_CROSS1);
@@ -1153,4 +1183,61 @@ void splash(int brightness) {
   pixels_cross2.show();
 
 
+};
+
+void wbow(byte brightness) {
+
+  short i;
+  static short rot;
+  unsigned long c1,c2,c3;
+  
+  decimate(pixels_square.getPixels(), NUMPIXELS_SQUARE);
+  decimate(pixels_circle.getPixels(), NUMPIXELS_CIRCLE);
+  decimate(pixels_cross1.getPixels(), NUMPIXELS_CROSS1);
+  decimate(pixels_cross2.getPixels(), NUMPIXELS_CROSS2);
+  for (i = 0; i < 75; i++) {
+    short p1, p2, p3;
+    p1 = i+rot;
+    if (p1 > 216) {
+      p1-=216;
+    }
+
+    p2 = i+rot+75;
+    while(p2 > 216) p2-=216;
+    
+    p3 = i+rot + 150;
+    while (p3 > 216) p3 -=216;
+    
+    c1 = nextrainbow(36, p1, brightness);
+    c2 = nextrainbow(36, p2, brightness);
+    c3 = nextrainbow(36, p3, brightness);
+   // pixels_square.setPixelColor(i, c1);
+   // pixels_cross1.setPixelColor(i, c2);    
+   // pixels_cross2.setPixelColor(i, c3);
+    segment_setpixel(1, 75-i, c1);
+    segment_setpixel(15, i, c2);
+    segment_setpixel(14, i, c3);
+
+    segment_setpixel(3, i, c1);
+    segment_setpixel(16, 75-i,c2);
+
+     segment_setpixel(13, 75-i, c3);
+
+     segment_setpixel(5, 75-i, c1);
+
+     segment_setpixel(7, i, c1);
+   // pixels_square.setPixelColor(i*2+1, c1);
+   // pixels_cross1.setPixelColor(i*2+1, c2);    
+   // pixels_cross2.setPixelColor(i*2+1, c3);
+  }
+
+
+  rot++;
+  if (rot > 215) {
+    rot = 0;
+  }
+  pixels_square.show();
+  pixels_circle.show();
+  pixels_cross1.show();
+  pixels_cross2.show();
 }
