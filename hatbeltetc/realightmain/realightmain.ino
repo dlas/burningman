@@ -56,7 +56,18 @@ byte controls[20];
 #define main_color_w controls[15]
 
 
+class NullPixels {
+  public:
+  void setPixelColor(byte i, uint32_t c) {};
+  void setPixelColor(byte i, byte r, byte g, byte b, byte w) {};
+  void setPixelColor(byte i, byte r, byte g, byte b) {};
+  void show() {}
+  void begin(){}
+  uint32_t Color(byte r, byte g,byte b) {};
+  uint32_t Color(byte r, byte g, byte b, byte w) {};
+};
 
+NullPixels pixels2, pixels3;
 #ifndef BIKE
 #include <Adafruit_NeoPixel.h>
 //byte rawpixeldata[144*4];
@@ -71,9 +82,9 @@ Adafruit_NeoPixel pixels = Adafruit_NeoPixel(144, 2, NEO_GRBW + NEO_KHZ800);
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(144, 2, NEO_GRBW + NEO_KHZ800);
 
 #endif
-Adafruit_NeoPixel pixels2 = Adafruit_NeoPixel(32, 4, NEO_GRB + NEO_KHZ800);
+//Adafruit_NeoPixel pixels2 = Adafruit_NeoPixel(32, 4, NEO_GRB + NEO_KHZ800);
 
-Adafruit_NeoPixel pixels3 = Adafruit_NeoPixel(32, 6, NEO_GRB + NEO_KHZ800);
+//Adafruit_NeoPixel pixels3 = Adafruit_NeoPixel(32, 6, NEO_GRB + NEO_KHZ800);
 
 #define NUMPIXELS 144
 #define NUMPIXELS2 32
@@ -118,17 +129,8 @@ uint32_t Color2(byte r, byte g, byte b, byte w) {
   
 }
 
-class NullPixels {
-  public:
-  void setPixelColor(byte i, uint32_t c) {};
-  void setPixelColor(byte i, byte r, byte g, byte b, byte w) {};
-  void show() {}
-  void begin(){}
-};
-
-NullPixels pixels2, pixels3;
-
 #endif
+
 
 
 #ifdef __AVR__
